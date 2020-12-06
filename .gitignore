@@ -3,3 +3,5 @@ dist
 npm-debug.log
 .DS_Store
 /*.env
+deploy.sh
+temp
