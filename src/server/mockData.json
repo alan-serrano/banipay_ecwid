@@ -1,12 +1,12 @@
 {
     "storeId": 1003,
     "lang": "en",
-    "returnUrl": "https://app.ecwid.com/custompaymentapps/1003?orderId=65306446&clientId=mollie-pg",
+    "returnUrl": "localhost:3000/test",
     "merchantAppSettings": {
         "apiKey": "\"XXX\""
     },
     "cart": {
-        "currency": "USD",
+        "currency": "BOB",
         "order": {
             "vendorOrderNumber": "65306446",
             "refundedAmount": 0,

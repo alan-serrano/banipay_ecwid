@@ -14,28 +14,34 @@ router.route('/')
         })
     })
     .post((req, res) => {
-        const data = getData(req.body.data);
-        const notificationUrl = `https://${req.get('host')}/payment/notification`;
-        const successUrl = `https://${req.get('host')}/payment/notification`;
+        const data = decryptData(req.body.data); // Decrypt data from ecwid
+        const host = req.get('host'); //domain that Express is running on
+        const notificationUrl = `https://${host}/payment/notification`;
+        const successUrl = `https://${host}/payment/notification`;
+        const failedUrl = data.returnUrl ? `${data.returnUrl}&errorMsg=${encodeURIComponent('Ocurrió un error en el método de pago')}` : null;
 
-        registerTransaction(data, {notificationUrl, successUrl})
+        registerTransaction(data, {notificationUrl, successUrl, failedUrl})
             .then(register => {
                 if(register) {
-                    console.log(register);
                     res.redirect(register.urlTransaction);
+                } else if(failedUrl) {
+                    res.redirect(failedUrl)  // Redireccionar a Ecwid con mensaje de error
                 } else {
-                    // Redireccionar a Ecwid con mensaje de error
                     res.json({
-                        message: 'Error en crear la url de pago'
+                        message: 'Ocurrió un error en el método de pago'
                     })
                 }
             })
             .catch(err => {
-                // console.log(err);
                 // Redireccionar a Ecwid con mensaje de error
-                res.json({
-                    message: "Error"
-                })
+                if(failedUrl) {
+                    res.redirect(failedUrl)  // Redireccionar a Ecwid con mensaje de error
+                } else {
+                    res.json({
+                        message: 'Ocurrió un error en el método de pago',
+                        error: err
+                    })
+                }
             }) 
         ;
     })
@@ -43,13 +49,12 @@ router.route('/')
 
 router.route('/notification')
     .get((req, res)=> {
-        let {successUrl, accessToken} = req.query;
-
-        const paramsEcwid = new URL(successUrl);
-        let storeId = paramsEcwid.pathname.split('/');
-        storeId = storeId[storeId.length - 1];
-
-        const referenceTransactionId = paramsEcwid.searchParams.get('orderId');
+        const {
+            successUrl,
+            accessToken,
+            storeId,
+            referenceTransactionId
+        } = getEcwidParams(req.query);
         
         if(successUrl) {
             let endPointEcwidStore = `https://app.ecwid.com/api/v3/${storeId}/orders/transaction_${referenceTransactionId}?token=${accessToken}`;
@@ -72,6 +77,8 @@ router.route('/notification')
         }
     })
     .post((req, res)=> {
+        // Handle requests from banipay for changes in payment status
+
         const {
             externalCode: referenceTransactionId,
             reserved1: storeId,
@@ -103,8 +110,42 @@ router.route('/notification')
     })
 ;
 
-function getData(data) {
+function decryptData(data) {
     return decrypt(data)
+}
+
+
+
+/*
+
+This function get all the params from and URL that comes in this way:
+URL = `https://integration.com/payment/notification?successUrl=https%3A%2F%2Fapp.ecwid.com%2Fcustompaymentapps%2F1003%3ForderId%3D123456%26clientId%3Dmollie-pg&accessToken=asdf1234`
+EncodedUriSuccessUrl = https%3A%2F%2Fapp.ecwid.com%2Fcustompaymentapps%2F1003%3ForderId%3D123456%26clientId%3Dmollie-pg
+DecodedUriSuccessUrl = https://app.ecwid.com/custompaymentapps/1003?orderId=123456&clientId=mollie-pg`.
+
+getEcwidParams(URL) returns:
+ {
+    storeId: '1003',
+    referenceTransactionId: '123456,
+    accessToken: asdf1234,
+    successUrl: https%3A%2F%2Fapp.ecwid.com%2Fcustompaymentapps%2F1003%3ForderId%3D123456%26clientId%3Dmollie-pg
+ }
+ 
+*/
+function getEcwidParams(reqQuery) {
+    const {successUrl, accessToken} = reqQuery;
+    const paramsEcwid = new URL(successUrl);
+    let storeId = paramsEcwid.pathname.split('/');
+    storeId = storeId[storeId.length - 1];
+
+    const referenceTransactionId = paramsEcwid.searchParams.get('orderId');
+
+    return {
+        storeId,
+        referenceTransactionId,
+        accessToken,
+        successUrl,
+    }
 }
 
 export default router;

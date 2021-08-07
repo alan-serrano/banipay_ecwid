@@ -1,11 +1,11 @@
 // Global Variables
-let namespaceApp = "custom-app-35385615-1";
+const nameSpaceApp = window.nameSpaceApp;
 let initialConfig = {};
 
 // Initialize the application
 
 EcwidApp.init({
-    app_id: namespaceApp, // use your application namespace
+    app_id: nameSpaceApp, // use your application namespace
     autoloadedflag: false,
     autoheight: true
 });

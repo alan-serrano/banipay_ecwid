@@ -19,7 +19,6 @@ async function createURL(data, additionalData = {}) {
         return response.data;
 
     } catch (error){
-        // console.log(error)
         return null;
     }
 }
